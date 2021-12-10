@@ -1,11 +1,11 @@
 # Importações para o bote funcionar ( Não mexa nisso!! )
 
-import asyncio, time, json, discord
+import asyncio, discord, config
+from datetime import datetime
+from discord.ext.commands.core import command
 from discord import message
-from discord.ext import commands, tasks
+from discord.ext import commands
 from colorama import Fore
-from itertools import cycle
-from discord.ext.commands.core import check_any
 from discord_components import DiscordComponents
 from discord_components.component import Button, ButtonStyle
 
@@ -16,7 +16,69 @@ client = commands.Bot(command_prefix='.', intents = intents)
 # Tirar o comando inicial do help ( Não mexa nisso!! )
 client.remove_command('help')
 
+@client.event
+async def on_button_click(ctx):
+    if (ctx.custom_id == "startStaffWork"):
+       await baterPontoStaff(ctx)
+
+async def baterPontoStaff(ctx):
+    await ctx.respond(content="Iniciando...")
+    InitialTime = datetime.now().replace(microsecond=0)
+    hour = InitialTime.strftime("%H")
+    minute = InitialTime.strftime("%M")
+    second = InitialTime.strftime("%S")
+    StartTime = f"{hour}:{minute}:{second} | {InitialTime.day}/{InitialTime.month}/{InitialTime.year}"
+    embed = discord.Embed(description="```Serviço iniciado com sucesso!```", color=discord.Colour.orange())
+    embed.set_author(name=f"{ctx.author.display_name}#{ctx.author.discriminator} - Ponto", icon_url=ctx.author.avatar_url)
+    embed.add_field(name="Iniciado as:", value=f"> {StartTime}", inline=False)
+    embed.add_field(name="Finalizado as:", value=f"> - x -", inline=False)
+    Message = await ctx.channel.send(ctx.author.mention, embed=embed,  components=[[
+    Button(style=ButtonStyle.green,
+            label="🤖 Finalizar",
+            custom_id='finalize_time'),
+    ]])
+
+    def check(reaction):
+        return (reaction.author.id == ctx.author.id and reaction.message.id == Message.id)
+
+    waitButon = await client.wait_for("button_click", timeout=86400, check=check)
+
+    if (waitButon != None):
+        if (waitButon.custom_id == 'finalize_time'):
+            FinishTime = datetime.now().replace(microsecond=0)
+            hour = FinishTime.strftime("%H")
+            minute = FinishTime.strftime("%M")
+            second = FinishTime.strftime("%S")
+            Total_time = FinishTime - InitialTime
+
+            await Message.delete()
+            EndTime = f"{hour}:{minute}:{second} | {FinishTime.day}/{FinishTime.month}/{FinishTime.year}"
+            channel = await client.fetch_channel(config.channels['resultadoBatePonto'])
+            await ctx.respond(content="Iniciando...")
+            embed = discord.Embed(description="```Serviço iniciado com sucesso!```", color=discord.Colour.blue())
+            embed.set_author(name=f"{ctx.author.display_name}#{ctx.author.discriminator} - Ponto", icon_url=ctx.author.avatar_url)
+            embed.add_field(name="Iniciado as:", value=f"> **{StartTime}**", inline=False)
+            embed.add_field(name="Finalizado as:", value=f"> **{EndTime}**", inline=False)
+            embed.add_field(name="Total:", value=f"> **{Total_time}**")
+            Message = await channel.send(ctx.author.mention, embed=embed)
+
 #Avisa quando o bot fica online.
+
+@client.command()
+@commands.guild_only()
+async def send_batePontoMessage(ctx):
+    if (ctx.author.id == 852759076353736705):
+        await ctx.message.delete()
+        embed = discord.Embed(description="```Deseja iniciar seu serviço? vamos lá!```", color=discord.Colour.purple())
+        embed.set_author(name="Inicie seu trabalho agora mesmo!", icon_url=ctx.guild.icon_url)
+        embed.set_footer(text="Versão em desenvolvimento, pode ocorrer erros!", icon_url=ctx.author.avatar_url)
+        embed.add_field(name="Aviso", value="> Em caso de problemas contate por Zeus.")
+        await ctx.channel.send("||@everyone||", embed=embed,  components=[[
+            Button(style=ButtonStyle.blue,
+                label="🕙 Iniciar Serviço",
+                custom_id='startStaffWork'),
+        ]])
+
 
 @client.event
 async def on_ready():
@@ -199,11 +261,11 @@ async def ban(ctx, membro : discord.Member, *, motivo=None):
         return
 
     else:
-        canal = client.get_channel(id=917846075606462464)
+        logsChannel = client.get_channel(id=config.channels['logsChannel'])
         await membro.ban()
         embed=discord.Embed(title=f"**Sistema de punição**\n\nO administrador {ctx.author.mention} baniu {membro.mention}\n Motivo : {motivo}", color=0xff0000)
         embed.set_author(name="Logs de banimentos!")
-        await canal.send(embed=embed)
+        await logsChannel.send(embed=embed)
         embed=discord.Embed(title=f"{ctx.author.name} O usuário foi banido com sucesso!!", color=0x00ff08, delete_after=20.00)
         embed.set_author(name="Logs")
         await ctx.send(embed=embed)
@@ -236,5 +298,4 @@ async def bate(ctx, nome= str):
 
 
 #NÃO MEXA!!!    
-
-client.run("OTE4NTk2MTA4NTg0OTEwODgw.YbJjSg.02RutxpR4QQ0AzlB84n9ijwWhuA")
+client.run(config.bot['acessToken'])
